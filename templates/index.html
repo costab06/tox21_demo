@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tox21 Prediction Platform</title>
+<style>
+/* ── Reset & base ───────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #f8f9fb;
+  --surface:  #ffffff;
+  --border:   #dde1e7;
+  --text:     #1a1d23;
+  --muted:    #6b7280;
+  --accent:   #1e5fa8;
+  --green:    #16a34a;
+  --red:      #dc2626;
+  --orange:   #ea580c;
+  --mono:     'SFMono-Regular', 'Consolas', monospace;
+  --radius:   6px;
+  --shadow:   0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────────── */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 52px;
+}
+.header-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.header-subtitle { font-size: 12px; color: var(--muted); }
+.header-spacer { flex: 1; }
+#conn-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #d1d5db; display: inline-block; margin-right: 6px;
+}
+#conn-dot.ok  { background: var(--green); }
+#conn-dot.err { background: var(--red); }
+#conn-text { font-size: 12px; color: var(--muted); }
+
+/* ── Layout ──────────────────────────────────────────────────────────────────── */
+main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+h2 { font-size: 13px; font-weight: 600; color: var(--muted);
+     text-transform: uppercase; letter-spacing: .06em;
+     margin-bottom: 12px; }
+
+/* ── Section divider ──────────────────────────────────────────────────────── */
+.section { margin-bottom: 32px; }
+
+/* ── Assay grid ──────────────────────────────────────────────────────────────── */
+.assay-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.assay-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+}
+.assay-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.assay-name { font-weight: 600; font-size: 14px; font-family: var(--mono); }
+.badge {
+  font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.badge-trained   { background: #dcfce7; color: #166534; }
+.badge-untrained { background: #f3f4f6; color: #6b7280; }
+.badge-training  { background: #fef9c3; color: #854d0e; }
+.badge-searching { background: #dbeafe; color: #1e40af; }
+.assay-mechanism { font-size: 12px; color: var(--text); margin-bottom: 3px; }
+.assay-context   { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+.assay-accuracy  { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.assay-accuracy strong { color: var(--text); }
+.assay-actions   { display: flex; gap: 8px; align-items: center; }
+
+/* ── Per-assay stats table ───────────────────────────────────────────────── */
+.stats-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 10px; font-family: var(--mono);
+  margin-bottom: 10px;
+}
+.stats-table th {
+  text-align: right; padding: 1px 4px;
+  color: var(--muted); font-weight: 600;
+  font-size: 9px; white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+.stats-table th:first-child { text-align: left; }
+.stats-table td {
+  text-align: right; padding: 2px 4px; white-space: nowrap;
+}
+.stats-table td:first-child {
+  text-align: left; color: var(--muted); font-weight: 600;
+}
+.stats-table tr:last-child td { border-bottom: none; }
+
+/* ── Buttons ─────────────────────────────────────────────────────────────────── */
+button {
+  font-size: 12px; font-family: inherit;
+  padding: 5px 12px; border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface); color: var(--text);
+  cursor: pointer; transition: background .12s;
+}
+button:hover { background: #f3f4f6; }
+button:disabled { opacity: .5; cursor: default; }
+button.primary {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+button.primary:hover { background: #1a5090; }
+.btn-sm { padding: 3px 9px; font-size: 11px; }
+
+/* ── Prediction panel ────────────────────────────────────────────────────────── */
+.predict-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+.predict-layout { display: flex; gap: 20px; flex-wrap: wrap; }
+.predict-input-col { flex: 0 0 320px; }
+.predict-results-col { flex: 1; min-width: 300px; }
+
+label { display: block; font-size: 12px; font-weight: 500;
+        color: var(--muted); margin-bottom: 4px; }
+textarea {
+  width: 100%; height: 140px;
+  font-family: var(--mono); font-size: 12px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 8px; resize: vertical; background: #fafafa;
+}
+textarea:focus { outline: none; border-color: var(--accent); }
+.hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+/* ── Prediction results table ─────────────────────────────────────────────── */
+#pred-results-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th {
+  text-align: left; padding: 6px 10px;
+  background: #f8f9fb; border-bottom: 1px solid var(--border);
+  font-weight: 600; white-space: nowrap;
+}
+td { padding: 6px 10px; border-bottom: 1px solid #f0f1f3; }
+tr:last-child td { border-bottom: none; }
+.cell-active   { color: var(--red);   font-weight: 600; }
+.cell-inactive { color: var(--green); }
+.cell-na       { color: #d1d5db; }
+.cell-invalid  { color: var(--muted); font-style: italic; }
+.smiles-cell   { font-family: var(--mono); font-size: 11px;
+                 max-width: 180px; overflow: hidden;
+                 text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── History panel ──────────────────────────────────────────────────────────── */
+.history-panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow);
+}
+#hist-assay-select {
+  font-size: 12px; padding: 4px 8px; border: 1px solid var(--border);
+  border-radius: var(--radius); font-family: var(--mono);
+  margin-left: 8px;
+}
+#hist-table-wrap { margin-top: 12px; overflow-x: auto; }
+
+/* ── Toast ──────────────────────────────────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: #1a1d23; color: #f9fafb;
+  padding: 10px 16px; border-radius: var(--radius);
+  font-size: 13px; opacity: 0; transition: opacity .2s;
+  pointer-events: none; max-width: 360px;
+}
+#toast.show { opacity: 1; }
+
+/* ── How it works modal ─────────────────────────────────────────────────────── */
+#how-modal-backdrop {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.45); z-index: 1000;
+  align-items: flex-start; justify-content: center;
+  padding: 40px 16px;
+  overflow-y: auto;
+}
+#how-modal-backdrop.open { display: flex; }
+#how-modal {
+  background: var(--surface); border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.2);
+  max-width: 700px; width: 100%;
+  padding: 28px 32px; position: relative;
+}
+#how-modal h3 {
+  font-size: 15px; font-weight: 700; margin-bottom: 18px; color: var(--text);
+}
+#how-modal h4 {
+  font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--accent); margin: 18px 0 6px;
+}
+#how-modal p, #how-modal li {
+  font-size: 13px; line-height: 1.6; color: var(--text);
+}
+#how-modal ul { padding-left: 18px; margin-top: 4px; }
+#how-modal li { margin-bottom: 3px; }
+#how-modal code {
+  font-family: var(--mono); font-size: 11px;
+  background: #f3f4f6; padding: 1px 5px; border-radius: 3px;
+}
+.close-modal-btn {
+  position: absolute; top: 14px; right: 16px;
+  background: none; border: none; font-size: 20px;
+  cursor: pointer; color: var(--muted); line-height: 1;
+  padding: 2px 6px;
+}
+.close-modal-btn:hover { color: var(--text); background: none; }
+#examples-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+#examples-table th {
+  text-align: left; padding: 5px 8px;
+  background: #f8f9fb; border-bottom: 1px solid var(--border); font-weight: 600;
+}
+#examples-table td { padding: 5px 8px; border-bottom: 1px solid #f0f1f3; }
+#examples-table td:first-child { font-family: var(--mono); font-size: 11px; }
+#examples-table tr:last-child td { border-bottom: none; }
+.load-examples-btn {
+  margin-top: 14px; font-size: 12px;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="header-title">Tox21 Prediction Platform</div>
+    <div class="header-subtitle">Neural network toxicity prediction across 12 assay endpoints</div>
+  </div>
+  <div class="header-spacer"></div>
+  <button onclick="document.getElementById('how-modal-backdrop').classList.add('open')"
+          style="font-size:12px;padding:4px 12px;margin-right:12px">
+    How it works
+  </button>
+  <div>
+    <span id="conn-dot"></span>
+    <span id="conn-text">Connecting…</span>
+  </div>
+</header>
+
+<!-- ── How it works modal ────────────────────────────────────────────────────── -->
+<div id="how-modal-backdrop" onclick="if(event.target===this)this.classList.remove('open')">
+  <div id="how-modal">
+    <button class="close-modal-btn" onclick="document.getElementById('how-modal-backdrop').classList.remove('open')">×</button>
+    <h3>How Tox21 Prediction Works</h3>
+
+    <h4>1 · What is Tox21?</h4>
+    <p>
+      The Tox21 programme screened ~10,000 environmental chemicals and drugs
+      across 12 toxicological assays covering nuclear receptor signalling and
+      cellular stress response pathways. Each assay labels a compound as
+      <em>active</em> (toxic signal detected) or <em>inactive</em>.
+    </p>
+
+    <h4>2 · SMILES notation</h4>
+    <p>
+      A SMILES string (Simplified Molecular-Input Line-Entry System) encodes a
+      molecule's structure as a short text string.
+      Atoms are written as their element symbols; bonds, branches, and rings are
+      represented by punctuation. For example aspirin is
+      <code>CC(=O)Oc1ccccc1C(=O)O</code>.
+    </p>
+
+    <h4>3 · Morgan fingerprints</h4>
+    <p>
+      Each SMILES is parsed by RDKit and converted to a
+      <strong>2048-bit circular (Morgan) fingerprint</strong> at radius&nbsp;2.
+      Each bit records whether a particular atomic neighbourhood pattern is
+      present in the molecule, giving a fixed-length binary vector that neural
+      networks can process.
+    </p>
+
+    <h4>4 · Neural network</h4>
+    <p>
+      A fully-connected network with architecture
+      <code>2048 → 512 → 128 → 32 → 1</code> is trained per assay.
+      Training uses the <strong>Adam optimiser</strong> (lr=0.001),
+      <strong>dropout</strong> (p=0.5) for regularisation, and
+      <strong>weight decay</strong> (λ=1×10⁻⁴).
+      The single output neuron uses a sigmoid activation; a value ≥ 0.5
+      is classified as <em>active</em>.
+    </p>
+
+    <h4>5 · Inference</h4>
+    <p>
+      At prediction time dropout is disabled (weights are used as-is).
+      The fingerprint is fed forward through the trained weights and the
+      sigmoid output is thresholded at 0.5 to give an Active / Inactive call
+      for each assay that has a trained model.
+    </p>
+
+    <h4>Example compounds to test</h4>
+    <p>Paste any of these into the prediction box to explore the models:</p>
+    <table id="examples-table">
+      <thead><tr><th>SMILES</th><th>Compound</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>CC(=O)Oc1ccccc1C(=O)O</td><td>Aspirin</td><td>Common NSAID; generally inactive</td></tr>
+        <tr><td>Cn1cnc2c1c(=O)n(C)c(=O)n2C</td><td>Caffeine</td><td>Methylxanthine; generally inactive</td></tr>
+        <tr><td>OC[C@H]1OC(O)[C@H](O)[C@@H](O)[C@@H]1O</td><td>Glucose</td><td>Simple sugar; inactive across most assays</td></tr>
+        <tr><td>Clc1cc2c(cc1Cl)Oc1cc(Cl)c(Cl)cc1O2</td><td>TCDD (Dioxin)</td><td>Potent AhR agonist; expect NR-AhR active</td></tr>
+        <tr><td>c1ccc2ccccc2c1</td><td>Naphthalene</td><td>Polycyclic aromatic; mild activity</td></tr>
+        <tr><td>CC(C)(c1ccc(O)cc1)c1ccc(O)cc1</td><td>BPA</td><td>Endocrine disruptor; expect ER activity</td></tr>
+        <tr><td>CC/C(=C(\CC)c1ccc(O)cc1)c1ccc(O)cc1</td><td>DES</td><td>Synthetic oestrogen; strong ER agonist</td></tr>
+        <tr><td>NC(=O)C=C</td><td>Acrylamide</td><td>Known neurotoxin/carcinogen</td></tr>
+        <tr><td>O=Cc1ccccc1</td><td>Benzaldehyde</td><td>Flavouring agent; low toxicity</td></tr>
+      </tbody>
+    </table>
+    <button class="primary load-examples-btn" onclick="loadExamples()">Load all examples into prediction box</button>
+  </div>
+</div>
+
+<main>
+
+<!-- ── Train all bar ────────────────────────────────────────────────────────── -->
+<div class="section" style="margin-bottom:16px">
+  <div style="display:flex;align-items:center;gap:12px">
+    <button class="primary" id="train-all-btn" onclick="trainAllUntrained()">Train All Untrained</button>
+    <button id="retrain-all-btn" onclick="trainAll(true)">Retrain All</button>
+    <button id="search-all-btn" onclick="searchAll()">Search All</button>
+    <button onclick="downloadStatsCSV()" title="Download training and test statistics for all assays">Download Stats CSV</button>
+    <span id="train-all-status" style="font-size:12px;color:var(--muted)"></span>
+  </div>
+</div>
+
+<!-- ── Nuclear Receptor assays ─────────────────────────────────────────────── -->
+<div class="section">
+  <h2>Nuclear Receptor Endpoints</h2>
+  <div class="assay-grid" id="grid-NR"></div>
+</div>
+
+<!-- ── Stress Response assays ─────────────────────────────────────────────── -->
+<div class="section">
+  <h2>Stress Response Endpoints</h2>
+  <div class="assay-grid" id="grid-SR"></div>
+</div>
+
+<!-- ── Prediction ──────────────────────────────────────────────────────────── -->
+<div class="section">
+  <h2>Compound Prediction</h2>
+  <div class="predict-panel">
+    <div class="predict-layout">
+      <div class="predict-input-col">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <label for="smiles-input" style="margin-bottom:0">SMILES (one per line)</label>
+          <button class="btn-sm" onclick="document.getElementById('smiles-file-input').click()"
+                  title="Upload a .txt or .csv file with one SMILES per line">Upload file</button>
+          <input type="file" id="smiles-file-input" accept=".txt,.csv,.smi"
+                 style="display:none" onchange="loadSmilesFile(this)">
+        </div>
+        <textarea id="smiles-input" placeholder="CCOc1ccc2nc(S(N)(=O)=O)sc2c1
+c1ccccc1
+CC(=O)Oc1ccccc1C(=O)O"></textarea>
+        <p class="hint">Enter one SMILES string per line, or upload a file. Predictions run against all trained models.</p>
+        <div style="margin-top: 12px; display: flex; gap: 8px; align-items: center;">
+          <button class="primary" onclick="runPredict()" id="pred-btn">Run Prediction</button>
+          <span id="pred-status" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+      </div>
+      <div class="predict-results-col">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;min-height:22px">
+          <span id="results-label" style="font-size:12px;color:var(--muted)"></span>
+          <button class="btn-sm" id="dl-csv-btn" onclick="downloadCSV()"
+                  style="display:none">Download CSV</button>
+        </div>
+        <div id="pred-results-wrap">
+          <p style="color:var(--muted);font-size:12px">
+            Results will appear here after running predictions.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Training history ────────────────────────────────────────────────────── -->
+<div class="section">
+  <h2>
+    Training History
+    <select id="hist-assay-select" onchange="refreshHistory()">
+      <option value="">— select assay —</option>
+    </select>
+  </h2>
+  <div class="history-panel">
+    <div id="hist-table-wrap">
+      <p style="color:var(--muted);font-size:12px">Select an assay above to view its training history.</p>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let assayData = [];   // [{assay, model, group, mechanism, context, trained, accuracy, trainDate}]
+let trainingSet  = new Set();  // assay keys currently being trained
+let searchingSet = new Set();  // assay keys currently running hyperparameter search
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, duration = 3000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), duration);
+}
+
+// ── Connection status ─────────────────────────────────────────────────────────
+function setConn(ok, msg) {
+  document.getElementById('conn-dot').className = ok ? 'ok' : 'err';
+  document.getElementById('conn-text').textContent = msg;
+}
+
+// ── Assay cards ───────────────────────────────────────────────────────────────
+function fmt(v, digits) {
+  return v != null ? v.toFixed(digits) : '—';
+}
+
+function statsTable(a) {
+  const tr = a.train;
+  const te = a.test;
+  if (!tr && !te) {
+    return a.trained
+      ? `<div class="assay-accuracy" style="color:var(--muted)">Not yet evaluated — click Evaluate</div>`
+      : '';
+  }
+  const row = (label, s) => s
+    ? `<tr><td>${label}</td>
+         <td>${fmt(s.mae,4)}</td>
+         <td>${fmt(s.rmse,4)}</td>
+         <td>${fmt(s.spearman,4)}</td>
+         <td>${fmt(s.rocAuc,4)}</td>
+         <td>${fmt(s.prAuc,4)}</td>
+         <td>${s.within5  != null ? s.within5+'%'  : '—'}</td>
+         <td>${s.within10 != null ? s.within10+'%' : '—'}</td>
+         <td>${s.within20 != null ? s.within20+'%' : '—'}</td>
+         <td style="color:var(--muted)">${s.n ?? '—'}</td>
+       </tr>`
+    : '';
+  return `<table class="stats-table">
+    <thead><tr>
+      <th></th><th>MAE</th><th>RMSE</th><th>ρ</th>
+      <th>ROC-AUC</th><th>PR-AUC</th><th>±5%</th><th>±10%</th><th>±20%</th><th>n</th>
+    </tr></thead>
+    <tbody>
+      ${row('Train', tr)}
+      ${row('Test',  te)}
+    </tbody>
+  </table>`;
+}
+
+function renderAssayCard(a) {
+  const trained   = a.trained;
+  const isTraining  = trainingSet.has(a.assay);
+  const isSearching = searchingSet.has(a.assay);
+  const badge = isSearching
+    ? `<span class="badge badge-searching">Searching…</span>`
+    : isTraining
+      ? `<span class="badge badge-training">Training…</span>`
+      : trained
+        ? `<span class="badge badge-trained">Trained</span>`
+        : `<span class="badge badge-untrained">Not trained</span>`;
+  const dateStr  = trained && !isSearching && !isTraining && a.trainDate
+    ? `<div class="assay-accuracy" style="color:var(--muted);margin-bottom:6px">${a.trainDate.replace('T',' ').replace('Z','')}</div>`
+    : '';
+  const statsHtml = statsTable(a);
+  const trainBtn  = isSearching
+    ? `<button class="btn-sm" disabled>Searching…</button>`
+    : isTraining
+      ? `<button class="btn-sm" disabled>Training…</button>`
+      : trained
+        ? `<button class="btn-sm" onclick="trainAssay('${a.assay}', true)">Retrain</button>
+           <button class="btn-sm" onclick="searchAssay('${a.assay}')">Search</button>
+           <button class="btn-sm" onclick="runEvaluate('${a.assay}')">Evaluate</button>`
+        : `<button class="btn-sm primary" onclick="trainAssay('${a.assay}', false)">Train</button>
+           <button class="btn-sm" onclick="searchAssay('${a.assay}')">Search</button>`;
+
+  return `<div class="assay-card" id="card-${a.assay.replace(/[^a-z0-9]/gi,'-')}">
+    <div class="assay-header">
+      <span class="assay-name">${a.assay}</span>
+      ${badge}
+    </div>
+    <div class="assay-mechanism">${a.mechanism}</div>
+    <div class="assay-context">${a.context}</div>
+    ${dateStr}
+    ${statsHtml}
+    <div class="assay-actions">
+      ${trainBtn}
+    </div>
+  </div>`;
+}
+
+async function refreshAssays() {
+  try {
+    const res = await fetch('/api/assays');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    assayData = await res.json();
+    setConn(true, 'Connected');
+
+    const gridNR = document.getElementById('grid-NR');
+    const gridSR = document.getElementById('grid-SR');
+    gridNR.innerHTML = '';
+    gridSR.innerHTML = '';
+
+    const select = document.getElementById('hist-assay-select');
+    // preserve selection
+    const prevVal = select.value;
+    select.innerHTML = '<option value="">— select assay —</option>';
+
+    for (const a of assayData) {
+      const card = renderAssayCard(a);
+      if (a.group === 'Nuclear Receptor') gridNR.insertAdjacentHTML('beforeend', card);
+      else                                gridSR.insertAdjacentHTML('beforeend', card);
+      const opt = document.createElement('option');
+      opt.value = a.assay;
+      opt.textContent = a.assay;
+      select.appendChild(opt);
+    }
+    if (prevVal) select.value = prevVal;
+  } catch (e) {
+    setConn(false, 'Offline');
+  }
+}
+
+// ── Train an assay ────────────────────────────────────────────────────────────
+async function trainAssay(assayKey, retrain) {
+  const cardId = 'card-' + assayKey.replace(/[^a-z0-9]/gi, '-');
+  const card = document.getElementById(cardId);
+  if (card) {
+    const btn = card.querySelector('button');
+    if (btn) { btn.disabled = true; btn.textContent = retrain ? 'Retraining…' : 'Training…'; }
+  }
+  toast(`${retrain ? 'Retraining' : 'Training'} ${assayKey} — preparing fingerprints…`, 4000);
+
+  // Capture current trainDate so we can detect when a retrain actually completes.
+  const prevDate = (assayData.find(x => x.assay === assayKey) || {}).trainDate || null;
+
+  try {
+    const res = await fetch(`/api/assays/${encodeURIComponent(assayKey)}/train`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ balance: true, retrain }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      toast(`Error: ${data.error || 'unknown'}`, 5000);
+    } else {
+      const prep = data.prep || {};
+      toast(`${assayKey}: training submitted (${prep.trainRows || '?'} rows, ` +
+            `${prep.positives || '?'} positives). Results update when complete.`, 6000);
+      // Mark as untrained + in-training so the card reflects submission immediately.
+      const a = assayData.find(x => x.assay === assayKey);
+      if (a) { a.trained = false; a.trainDate = null; a.testAccuracy = null; a.sensitivity = null; a.specificity = null; }
+      trainingSet.add(assayKey);
+      renderAllCards();
+      // Poll every 15s for up to 20 minutes
+      pollUntilTrained(assayKey, 80, prevDate);
+    }
+  } catch (e) {
+    toast(`Network error: ${e.message}`, 5000);
+    if (card) { const btn = card.querySelector('button'); if (btn) btn.disabled = false; }
+  }
+}
+
+async function pollUntilTrained(assayKey, attemptsLeft, prevDate, isSearch = false) {
+  if (attemptsLeft <= 0) { refreshAssays(); return; }
+  await new Promise(r => setTimeout(r, 15000));
+  const res = await fetch('/api/assays').catch(() => null);
+  if (!res || !res.ok) { pollUntilTrained(assayKey, attemptsLeft - 1, prevDate, isSearch); return; }
+  const data = await res.json();
+  const a = data.find(x => x.assay === assayKey);
+  // For fresh training: wait until trained=true.
+  // For retrain/search: wait until trainDate has changed (old date no longer matches).
+  const done = a && a.trained && (prevDate === null || a.trainDate !== prevDate);
+  if (done) {
+    assayData = data;
+    if (isSearch) searchingSet.delete(assayKey); else trainingSet.delete(assayKey);
+    renderAllCards();
+    setConn(true, 'Connected');
+    toast(`${assayKey} ${isSearch ? 'search' : 'training'} complete — evaluating test set…`, 4000);
+    await runEvaluate(assayKey);
+  } else {
+    pollUntilTrained(assayKey, attemptsLeft - 1, prevDate, isSearch);
+  }
+}
+
+function renderAllCards() {
+  const gridNR = document.getElementById('grid-NR');
+  const gridSR = document.getElementById('grid-SR');
+  gridNR.innerHTML = '';
+  gridSR.innerHTML = '';
+  for (const a of assayData) {
+    const card = renderAssayCard(a);
+    if (a.group === 'Nuclear Receptor') gridNR.insertAdjacentHTML('beforeend', card);
+    else                                gridSR.insertAdjacentHTML('beforeend', card);
+  }
+}
+
+// ── Prediction ────────────────────────────────────────────────────────────────
+async function runPredict() {
+  const raw = document.getElementById('smiles-input').value.trim();
+  if (!raw) { toast('Enter at least one SMILES string'); return; }
+  const smiles = raw.split('\n').map(s => s.trim()).filter(Boolean);
+
+  const btn    = document.getElementById('pred-btn');
+  const status = document.getElementById('pred-status');
+  btn.disabled = true;
+  document.getElementById('dl-csv-btn').style.display = 'none';
+  document.getElementById('results-label').textContent = '';
+  status.textContent = `Running… (${smiles.length} compound${smiles.length > 1 ? 's' : ''})`;
+
+  try {
+    const res = await fetch('/api/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ smiles }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      toast(`Error: ${data.error || 'unknown'}`, 5000);
+      return;
+    }
+    renderPredictions(data.compounds);
+    status.textContent = `${smiles.length} compound${smiles.length > 1 ? 's' : ''} screened`;
+  } catch (e) {
+    toast(`Network error: ${e.message}`, 5000);
+    status.textContent = '';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderPredictions(compounds) {
+  const wrap    = document.getElementById('pred-results-wrap');
+  const dlBtn   = document.getElementById('dl-csv-btn');
+  const label   = document.getElementById('results-label');
+  if (!compounds || !compounds.length) {
+    wrap.innerHTML = '<p style="color:var(--muted);font-size:12px">No results.</p>';
+    dlBtn.style.display = 'none';
+    return;
+  }
+
+  // Collect assays that have at least one prediction
+  const assaysWithResults = [];
+  for (const a of assayData) {
+    if (compounds.some(c => c.predictions && a.assay in c.predictions))
+      assaysWithResults.push(a.assay);
+  }
+
+  // Save for CSV download
+  lastPredictionData = { compounds, assays: assaysWithResults };
+  const valid = compounds.filter(c => c.valid).length;
+  label.textContent = `${compounds.length} compound${compounds.length !== 1 ? 's' : ''} · ${valid} valid`;
+  dlBtn.style.display = assaysWithResults.length ? '' : 'none';
+
+  let html = '<table><thead><tr>';
+  html += '<th>SMILES</th><th>Valid</th>';
+  for (const assay of assaysWithResults)
+    html += `<th title="${assay}">${assay}</th>`;
+  html += '</tr></thead><tbody>';
+
+  for (const c of compounds) {
+    html += '<tr>';
+    html += `<td class="smiles-cell" title="${esc(c.smiles)}">${esc(c.smiles)}</td>`;
+    if (!c.valid) {
+      html += `<td class="cell-invalid">Invalid SMILES</td>`;
+      html += `<td class="cell-na" colspan="${assaysWithResults.length}">—</td>`;
+    } else {
+      html += `<td style="color:var(--green)">✓</td>`;
+      for (const assay of assaysWithResults) {
+        const pred = c.predictions && c.predictions[assay];
+        if (!pred) {
+          html += `<td class="cell-na">—</td>`;
+        } else {
+          const score  = pred.value != null ? pred.value : (pred.score != null ? pred.score : (pred.class === 1 ? 1.0 : 0.0));
+          const active = pred.value != null ? score >= 0.5 : pred.class === 1;
+          const pct = Math.round(score * 100);
+          const color = active ? 'var(--red)' : 'var(--green)';
+          html += `<td style="color:${color};font-weight:600;font-family:var(--mono)">${pct}%</td>`;
+        }
+      }
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+
+  if (assaysWithResults.length === 0)
+    html = '<p style="color:var(--muted);font-size:12px">No trained models available for prediction. Train at least one assay first.</p>';
+
+  wrap.innerHTML = html;
+}
+
+// ── History ───────────────────────────────────────────────────────────────────
+async function refreshHistory() {
+  const assayKey = document.getElementById('hist-assay-select').value;
+  const wrap = document.getElementById('hist-table-wrap');
+  if (!assayKey) {
+    wrap.innerHTML = '<p style="color:var(--muted);font-size:12px">Select an assay above to view its training history.</p>';
+    return;
+  }
+  try {
+    const res = await fetch(`/api/assays/${encodeURIComponent(assayKey)}/history`);
+    const rows = await res.json();
+    if (!rows.length) {
+      wrap.innerHTML = `<p style="color:var(--muted);font-size:12px">No history yet for ${assayKey}.</p>`;
+      return;
+    }
+    let html = `<table>
+      <thead><tr>
+        <th>Date</th><th>Time</th><th>Pass #</th><th>Result</th>
+        <th>SSE</th><th>Accuracy</th>
+      </tr></thead><tbody>`;
+    for (const r of rows) {
+      const ok = r.result === 'pass';
+      const cls = ok ? 'color:var(--green)' : 'color:var(--red)';
+      html += `<tr>
+        <td>${r.date}</td><td>${r.time}</td><td>${r.pass}</td>
+        <td style="${cls}">${r.result}</td>
+        <td>${r.sse?.toFixed(4)}</td>
+        <td>${r.accuracy?.toFixed(2)}%</td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+  } catch (e) {
+    wrap.innerHTML = `<p style="color:var(--red);font-size:12px">Error loading history.</p>`;
+  }
+}
+
+// ── Evaluate ──────────────────────────────────────────────────────────────────
+async function runEvaluate(assayKey) {
+  try {
+    const res = await fetch(`/api/assays/${encodeURIComponent(assayKey)}/evaluate`, {
+      method: 'POST',
+    });
+    const data = await res.json();
+    if (res.ok) {
+      // Update assayData with eval results
+      const a = assayData.find(x => x.assay === assayKey);
+      if (a) {
+        a.train = data.train;
+        a.test  = data.test;
+      }
+      renderAllCards();
+      const te = data.test;
+      if (te) {
+        toast(`${assayKey} — Test: MAE ${te.mae?.toFixed(4)}  RMSE ${te.rmse?.toFixed(4)}  ROC-AUC ${te.rocAuc?.toFixed(4)}`, 8000);
+      }
+    }
+  } catch (_) {}
+}
+
+// ── Train all ─────────────────────────────────────────────────────────────────
+async function trainAll(retrain) {
+  const targets = retrain
+    ? assayData.map(a => a.assay)
+    : assayData.filter(a => !a.trained).map(a => a.assay);
+
+  if (!targets.length) { toast('All assays are already trained.'); return; }
+
+  // Capture current trainDates so we can detect when each retrain actually completes.
+  const prevDates = {};
+  for (const a of assayData) prevDates[a.assay] = a.trainDate || null;
+
+  const allBtn      = document.getElementById('train-all-btn');
+  const retrainBtn  = document.getElementById('retrain-all-btn');
+  const searchAllBtn = document.getElementById('search-all-btn');
+  const status      = document.getElementById('train-all-status');
+  allBtn.disabled = true;
+  retrainBtn.disabled = true;
+  if (searchAllBtn) searchAllBtn.disabled = true;
+
+  for (let i = 0; i < targets.length; i++) {
+    const assayKey = targets[i];
+    status.textContent = `Submitting ${assayKey} (${i + 1}/${targets.length})…`;
+    toast(`Submitting ${assayKey} (${i + 1}/${targets.length})`, 3000);
+    try {
+      await fetch(`/api/assays/${encodeURIComponent(assayKey)}/train`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ balance: true, retrain }),
+      });
+    } catch (_) {}
+    // Mark as untrained + in-training immediately after submission so the badge flips.
+    const submitted = assayData.find(x => x.assay === assayKey);
+    if (submitted) { submitted.trained = false; submitted.trainDate = null; submitted.testAccuracy = null; submitted.sensitivity = null; submitted.specificity = null; }
+    trainingSet.add(assayKey);
+    renderAllCards();
+    // Small gap between submissions to avoid overwhelming the server
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  status.textContent = `All ${targets.length} jobs submitted — polling for completion…`;
+  allBtn.disabled = false;
+  retrainBtn.disabled = false;
+  if (searchAllBtn) searchAllBtn.disabled = false;
+
+  // Poll until all submitted assays show as trained (or retrained)
+  await pollAllTrained(targets, 80, prevDates, new Set());
+  status.textContent = '';
+}
+
+function trainAllUntrained() { trainAll(false); }
+
+// ── Hyperparameter search ──────────────────────────────────────────────────────
+async function searchAssay(assayKey) {
+  const cardId = 'card-' + assayKey.replace(/[^a-z0-9]/gi, '-');
+  const card = document.getElementById(cardId);
+  if (card) {
+    const btns = card.querySelectorAll('button');
+    btns.forEach(b => { b.disabled = true; });
+    const first = card.querySelector('button');
+    if (first) { first.textContent = 'Searching…'; }
+  }
+  toast(`${assayKey}: preparing fingerprints for search…`, 4000);
+
+  const prevDate = (assayData.find(x => x.assay === assayKey) || {}).trainDate || null;
+
+  try {
+    const res = await fetch(`/api/assays/${encodeURIComponent(assayKey)}/train`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ balance: true, search: true }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      toast(`Error: ${data.error || 'unknown'}`, 5000);
+      renderAllCards();
+    } else {
+      const prep = data.prep || {};
+      toast(`${assayKey}: search submitted (${prep.trainRows || '?'} rows). Results update when complete.`, 6000);
+      const a = assayData.find(x => x.assay === assayKey);
+      if (a) { a.trained = false; a.trainDate = null; a.testAccuracy = null; a.sensitivity = null; a.specificity = null; }
+      searchingSet.add(assayKey);
+      renderAllCards();
+      // Search can take much longer than a single train — poll for up to 6 hours (1440 × 15s)
+      pollUntilTrained(assayKey, 1440, prevDate, /* isSearch */ true);
+    }
+  } catch (e) {
+    toast(`Network error: ${e.message}`, 5000);
+    searchingSet.delete(assayKey);
+    renderAllCards();
+  }
+}
+
+async function searchAll() {
+  const targets = assayData.map(a => a.assay);
+  if (!targets.length) return;
+
+  const searchAllBtn = document.getElementById('search-all-btn');
+  if (searchAllBtn) searchAllBtn.disabled = true;
+  const status = document.getElementById('train-all-status');
+
+  const prevDates = {};
+  for (const a of assayData) prevDates[a.assay] = a.trainDate || null;
+
+  for (let i = 0; i < targets.length; i++) {
+    const assayKey = targets[i];
+    if (status) status.textContent = `Submitting search for ${assayKey} (${i + 1}/${targets.length})…`;
+    toast(`Submitting search for ${assayKey} (${i + 1}/${targets.length})`, 3000);
+    try {
+      await fetch(`/api/assays/${encodeURIComponent(assayKey)}/train`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ balance: true, search: true }),
+      });
+    } catch (_) {}
+    const submitted = assayData.find(x => x.assay === assayKey);
+    if (submitted) { submitted.trained = false; submitted.trainDate = null; submitted.testAccuracy = null; submitted.sensitivity = null; submitted.specificity = null; }
+    searchingSet.add(assayKey);
+    renderAllCards();
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  if (status) status.textContent = `All ${targets.length} searches submitted — polling for completion…`;
+  if (searchAllBtn) searchAllBtn.disabled = false;
+
+  await pollAllTrained(targets, 1440, prevDates, new Set(), /* isSearch */ true);
+  if (status) status.textContent = '';
+}
+
+async function pollAllTrained(targets, attemptsLeft, prevDates, evaluated, isSearch = false) {
+  if (attemptsLeft <= 0) { await refreshAssays(); return; }
+  await new Promise(r => setTimeout(r, 15000));
+  const res = await fetch('/api/assays').catch(() => null);
+  if (!res || !res.ok) { await pollAllTrained(targets, attemptsLeft - 1, prevDates, evaluated, isSearch); return; }
+  const data = await res.json();
+  assayData = data;
+  renderAllCards();
+  setConn(true, 'Connected');
+
+  // An assay is "done" if trained=true AND (no prior date OR date changed).
+  const isDone = key => {
+    const a = data.find(x => x.assay === key);
+    if (!a || !a.trained) return false;
+    const prev = prevDates ? prevDates[key] : null;
+    return prev === null || prev === undefined || a.trainDate !== prev;
+  };
+
+  const remaining = targets.filter(key => !isDone(key));
+
+  // Evaluate newly finished assays (only once each).
+  for (const key of targets.filter(k => isDone(k) && !evaluated.has(k))) {
+    evaluated.add(key);
+    if (isSearch) searchingSet.delete(key); else trainingSet.delete(key);
+    renderAllCards();
+    await runEvaluate(key);
+  }
+
+  const status = document.getElementById('train-all-status');
+  if (!remaining.length) {
+    toast(`All assays ${isSearch ? 'searched' : 'trained'} and evaluated.`, 5000);
+    if (status) status.textContent = '';
+  } else {
+    if (status) status.textContent = `Waiting on ${remaining.length} assay(s)…`;
+    await pollAllTrained(targets, attemptsLeft - 1, prevDates, evaluated, isSearch);
+  }
+}
+
+// ── File upload ───────────────────────────────────────────────────────────────
+function loadSmilesFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l && !l.startsWith('#'));
+    document.getElementById('smiles-input').value = lines.join('\n');
+    toast(`Loaded ${lines.length} SMILES from ${file.name}`, 3000);
+  };
+  reader.readAsText(file);
+  // Reset so the same file can be re-selected
+  input.value = '';
+}
+
+// ── Download CSV ──────────────────────────────────────────────────────────────
+let lastPredictionData = null;  // {compounds, assays} saved after each run
+
+function downloadCSV() {
+  if (!lastPredictionData) return;
+  const { compounds, assays } = lastPredictionData;
+
+  const headers = ['SMILES', 'Valid', ...assays.map(a => a + '_score'), ...assays.map(a => a + '_class')];
+  const rows = compounds.map(c => {
+    const base = [c.smiles, c.valid ? '1' : '0'];
+    const scores  = assays.map(a => {
+      const p = c.predictions && c.predictions[a];
+      if (!p) return '';
+      const s = p.value != null ? p.value : p.score;
+      return s != null ? s.toFixed(3) : '';
+    });
+    const classes = assays.map(a => {
+      const p = c.predictions && c.predictions[a];
+      if (!p) return '';
+      return p.value != null ? (p.value >= 0.5 ? 1 : 0) : p.class;
+    });
+    return [...base, ...scores, ...classes];
+  });
+
+  const csv = [headers, ...rows]
+    .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+    .join('\r\n');
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'tox21_predictions.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Download stats CSV ────────────────────────────────────────────────────────
+function downloadStatsCSV() {
+  if (!assayData.length) { toast('No assay data loaded yet.'); return; }
+
+  const statCols = ['MAE', 'RMSE', 'Spearman', 'ROC_AUC', 'PR_AUC', 'Within5pct', 'Within10pct', 'Within20pct', 'N'];
+  const headers = [
+    'Assay', 'Group', 'Trained', 'Train Date',
+    ...statCols.map(c => 'Train_' + c),
+    ...statCols.map(c => 'Test_'  + c),
+  ];
+
+  const statVals = s => s ? [
+    s.mae, s.rmse, s.spearman, s.rocAuc, s.prAuc,
+    s.within5, s.within10, s.within20, s.n,
+  ] : Array(9).fill('');
+
+  const rows = assayData.map(a => [
+    a.assay,
+    a.group,
+    a.trained ? 'Yes' : 'No',
+    (a.trainDate || '').replace('T', ' ').replace('Z', ''),
+    ...statVals(a.train),
+    ...statVals(a.test),
+  ]);
+
+  const csv = [headers, ...rows]
+    .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+    .join('\r\n');
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'tox21_stats.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Load examples ─────────────────────────────────────────────────────────────
+function loadExamples() {
+  const examples = [
+    'CC(=O)Oc1ccccc1C(=O)O',
+    'Cn1cnc2c1c(=O)n(C)c(=O)n2C',
+    'OC[C@H]1OC(O)[C@H](O)[C@@H](O)[C@@H]1O',
+    'Clc1cc2c(cc1Cl)Oc1cc(Cl)c(Cl)cc1O2',
+    'c1ccc2ccccc2c1',
+    'CC(C)(c1ccc(O)cc1)c1ccc(O)cc1',
+    'CC/C(=C(\\CC)c1ccc(O)cc1)c1ccc(O)cc1',
+    'NC(=O)C=C',
+    'O=Cc1ccccc1',
+  ];
+  document.getElementById('smiles-input').value = examples.join('\n');
+  document.getElementById('how-modal-backdrop').classList.remove('open');
+  toast('9 example compounds loaded — click Run Prediction', 4000);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(async () => {
+  await refreshAssays();
+  setInterval(refreshAssays, 30000);
+})();
+</script>
+</body>
+</html>

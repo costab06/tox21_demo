@@ -1,0 +1,32 @@
+effect_category,studies,chemicals
+in life observation,3357,788
+pathology microscopic,2115,649
+organ weight,1783,554
+pathology gross,1007,462
+clinical chemistry,1078,431
+hematology,859,381
+developmental malformation,460,312
+reproductive performance,457,310
+urinalysis,316,215
+offspring survival early,252,187
+offspring survival late,114,104
+cholinesterase,258,71
+developmental landmark,70,62
+neuropathology,42,41
+learning memory,31,29
+startle: weaning neonate,25,25
+motor activity: mid,25,24
+motor activity: weaning neonate,18,18
+startle: young adult,16,16
+motor activity: young adult,20,15
+detailed clin obs: young adult,19,14
+detailed clin obs: weaning neonate,7,7
+detailed clin obs: early juvenile,6,6
+detailed clin obs: mid,6,6
+detailed clin obs: dam lactation #1,5,5
+detailed clin obs: dam gestation #1,4,4
+detailed clin obs: dam lactation #2,4,4
+detailed clin obs: dam gestation #2,3,3
+detailed clin obs: late juvenile,3,3
+startle,3,3
+detailed clin obs: early neonate,2,2
